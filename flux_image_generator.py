@@ -16,34 +16,34 @@ logger = logging.getLogger(__name__)
 st.set_page_config(page_title="Flux 图像生成器", layout="wide")
 
 # 标题
-st.title("Flux 图像生成器")
+st.title("Flux 吳振畫室")
 
 # 选择模型
 model = st.selectbox(
-    "选择模型",
+    "選擇模型",
     ["black-forest-labs/flux-schnell", "black-forest-labs/flux-dev"],
-    help="选择要使用的Flux模型"
+    help="選擇要使用的Flux模型"
 )
 
 # 输入提示词
-prompt = st.text_area("输入提示词", help="描述您想生成的图像")
+prompt = st.text_area("輸入提示詞", help="描述您想生成的圖像")
 
 # 上传txt文件
-uploaded_file = st.file_uploader("上传提示词文件 (每行一个提示词)", type="txt")
+uploaded_file = st.file_uploader("上傳提示詞文件 (每行一個提示詞)", type="txt")
 
 # 设置参数
-with st.expander("高级设置"):
-    seed = st.number_input("随机种子", min_value=0, help="设置随机种子以获得可重复的生成结果")
-    num_outputs = st.slider("每个提示词的输出数量", min_value=1, max_value=4, value=1, help="每个提示词生成的图像数量")
+with st.expander("高級設置"):
+    seed = st.number_input("隨機種子", min_value=0, help="設置隨機種子以獲得可重復的生成結果")
+    num_outputs = st.slider("每個提示詞的輸出數量", min_value=1, max_value=4, value=1, help="每個提示詞生成的圖像數量")
     aspect_ratio = st.selectbox(
         "宽高比",
         ["16:9", "1:1", "21:9", "2:3", "3:2", "4:5", "5:4", "9:16", "9:21"],
         index=0,
-        help="生成图像的宽高比"
+        help="生成圖像的寬高比"
     )
-    output_format = st.selectbox("输出格式", ["png", "webp", "jpg"], index=0, help="输出图像的格式")
-    output_quality = st.slider("输出质量", min_value=0, max_value=100, value=100, help="输出图像的质量,从0到100。100是最佳质量,0是最低质量。对于.png输出不相关")
-    disable_safety_checker = st.checkbox("禁用安全检查器", help="禁用生成图像的安全检查器。此功能仅通过API可用。")
+    output_format = st.selectbox("輸出格式", ["png", "webp", "jpg"], index=0, help="輸出圖像的格式")
+    output_quality = st.slider("輸出質量", min_value=0, max_value=100, value=100, help="輸出圖像的質量,從0到100。100是最佳質量,0是最低質量。對於.png輸出不相關")
+    disable_safety_checker = st.checkbox("禁用安全檢查器", help="禁用生成圖像的安全檢查器。此功能僅通過API可用。")
 
 async def generate_image_async(prompt, model, input_data, timeout=45):
     try:
@@ -54,12 +54,12 @@ async def generate_image_async(prompt, model, input_data, timeout=45):
         start_time = asyncio.get_event_loop().time()
         while prediction.status != "succeeded":
             if asyncio.get_event_loop().time() - start_time > timeout:
-                raise asyncio.TimeoutError(f"生成图像超时（{timeout}秒）")
+                raise asyncio.TimeoutError(f"生成圖像超時（{timeout}秒）")
             await asyncio.sleep(1)
             prediction = await replicate.predictions.async_get(prediction.id)
         
-        logger.info(f"API 响应: {prediction.output}")
-        logger.info(f"完整的 API 响应: {prediction}")
+        logger.info(f"API 響應: {prediction.output}")
+        logger.info(f"完整的 API 響應: {prediction}")
 
         if prediction.output:
             if isinstance(prediction.output, list):
@@ -67,16 +67,16 @@ async def generate_image_async(prompt, model, input_data, timeout=45):
             elif isinstance(prediction.output, str):
                 return prediction.output
             else:
-                logger.error(f"未知的 API 响应格式: {type(prediction.output)}")
+                logger.error(f"未知的 API 響應格式: {type(prediction.output)}")
                 return None
         else:
-            logger.error("API 响应为空")
+            logger.error("API 響應為空")
             return None
     except asyncio.TimeoutError as e:
         logger.error(str(e))
         return None
     except Exception as e:
-        logger.error(f"生成图像时发生错误: {str(e)}")
+        logger.error(f"生成圖像時發生錯誤: {str(e)}")
         return None
 
 def get_image_download_link(img_url, filename):
@@ -85,11 +85,11 @@ def get_image_download_link(img_url, filename):
     img_data = response.content
     b64 = base64.b64encode(img_data).decode()
     file_size = len(img_data)
-    logger.info(f"下载的图像大小: {file_size} 字节")
+    logger.info(f"下載的圖像大小: {file_size} 字節")
     return f'<a href="data:image/png;base64,{b64}" download="{filename}">下载图片 ({file_size/1024:.2f} KB)</a>'
 
 # 生成按钮
-if st.button("生成图像"):
+if st.button("生成圖像"):
     prompts = []
     if uploaded_file:
         prompts = [line.decode("utf-8").strip() for line in uploaded_file]
@@ -97,9 +97,9 @@ if st.button("生成图像"):
         prompts = [prompt]
     
     if not prompts:
-        st.error("请输入提示词或上传提示词文件")
+        st.error("請輸入提示詞或上傳提示詞文件")
     else:
-        with st.spinner(f"正在生成 {len(prompts) * num_outputs} 张图像..."):
+        with st.spinner(f"正在生成 {len(prompts) * num_outputs} 張圖像..."):
             async def generate_all_images():
                 tasks = []
                 for current_prompt in prompts:
