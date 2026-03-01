@@ -350,19 +350,40 @@ def polish_prompt_with_minimax(prompt: str) -> dict:
             "https://api.minimax.io/v1/text/chatcompletion_v2",
             headers=headers,
             json=payload,
-            timeout=30,
+            timeout=60,
         )
         resp.raise_for_status()
         data = resp.json()
-        polished = data["choices"][0]["message"]["content"].strip()
-        return {"polished": polished}
+        logger.info(f"MiniMax response keys: {list(data.keys())}")
+
+        # Check base_resp for API-level errors (status_code != 0 means error)
+        base_resp = data.get("base_resp", {})
+        if base_resp.get("status_code", 0) != 0:
+            msg = base_resp.get("status_msg", "未知錯誤")
+            logger.error(f"MiniMax base_resp error: {base_resp}")
+            return {"error": f"MiniMax 錯誤 ({base_resp.get('status_code')}): {msg}", "raw": data}
+
+        choices = data.get("choices")
+        if not choices:
+            # Some MiniMax responses use "reply" (older API) or return the full body differently
+            reply = data.get("reply") or data.get("output") or data.get("text")
+            if reply:
+                return {"polished": str(reply).strip()}
+            logger.error(f"Unexpected MiniMax response: {str(data)[:400]}")
+            return {"error": f"API 返回格式異常，請稍後重試。響應: {str(data)[:200]}", "raw": data}
+
+        content = choices[0].get("message", {}).get("content", "").strip()
+        if not content:
+            return {"error": "模型未返回內容，請重試", "raw": data}
+        return {"polished": content}
+
     except requests.exceptions.HTTPError as e:
         detail = ""
         try:
             detail = e.response.text[:300]
         except Exception:
             detail = str(e)
-        logger.error(f"MiniMax API error: {detail}")
+        logger.error(f"MiniMax API HTTP error: {detail}")
         return {"error": f"MiniMax API 錯誤: {detail}"}
     except Exception as e:
         logger.error(f"MiniMax error: {e}")
@@ -813,6 +834,9 @@ if polish_btn:
     else:
         with st.spinner("✨ MiniMax M2.5 正在潤色提示詞..."):
             polish_result = polish_prompt_with_minimax(prompt.strip())
+        if debug_mode and "raw" in polish_result:
+            with st.expander("🔧 MiniMax 原始響應", expanded=True):
+                st.json(polish_result["raw"])
         if "error" in polish_result:
             st.error(polish_result["error"])
         else:
